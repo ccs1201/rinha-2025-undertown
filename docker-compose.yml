@@ -3,9 +3,10 @@ x-backend-templates:
 #    build:
 #      context: .
 #      dockerfile: Dockerfile
-    image: ccs1201/rinha-backend-2025-puro:latest
+    image: csouzadocker/rinha-backend-2025-puro:0.0.1
     depends_on:
-      - backend-db
+      backend-db:
+        condition: service_healthy
     networks:
       - backend
       - payment-processor
@@ -16,10 +17,10 @@ x-backend-templates:
           memory: "117.50MB"
 
   app-env: &app-env
-    PAYMENT_PROCESSOR_WORKERS: "25"
+    PAYMENT_PROCESSOR_WORKERS: "4"
     datasource-class-name: "org.postgresql.Driver"
-    datasource-maximum-pool-size: "10"
-    datasource-minimum-idle: "10"
+    datasource-maximum-pool-size: "4"
+    datasource-minimum-idle: "4"
     datasource-password: "rinha"
     datasource-timeout: "2000"
     datasource-url: "jdbc:postgresql://postgres:5432/rinha"
@@ -28,12 +29,35 @@ x-backend-templates:
     payment-processor-fallback-url: "http://payment-processor-fallback:8080"
     server-port: "8080"
     server-io-threads: "2"
-    server-worker-threads: "8"
+    server-worker-threads: "4"
     thread-pool-size: "10"
-    thread-queue-size: "100"
-    warmup: "true"
-    warmup_rounds: "10000"
-    JAVA_OPTS: "-Xmx95m -Xms95m -XX:MaxMetaspaceSize=50m -XX:+UseG1GC"
+    thread-queue-size: "500"
+#    warmup: "false"
+#    warmup_rounds: "10000"
+    JAVA_OPTS: >
+      -Xmx100m
+      -Xms100m
+      -XX:MaxMetaspaceSize=40m
+      -XX:MaxGCPauseMillis=200
+      -Xss512k
+      -XX:+UseG1GC
+      -XX:+UseCompressedOops
+      -XX:+UseCompressedClassPointers
+      -XX:+AlwaysPreTouch
+      -Xbatch
+      -XX:+UnlockExperimentalVMOptions
+      -XX:+UnlockDiagnosticVMOptions
+      -XX:+UseFastUnorderedTimeStamps
+      -XX:+ExitOnOutOfMemoryError
+      -XX:+TieredCompilation
+      -XX:TieredStopAtLevel=1
+      -XX:CompileThreshold=500
+      -XX:+HeapDumpOnOutOfMemoryError
+    #    -XX:+UseNUMA \
+    #    -XX:+PrintCompilation
+    #    -XX:+PrintTieredEvents
+    #    -XX:+PrintCodeCache
+    #    -XX:+PrintInlining
 
 services:
   nginx:
@@ -82,11 +106,16 @@ services:
       POSTGRES_PASSWORD: rinha
     volumes:
       - ./init.sql/init-backend-db.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./init.sql/init-config.sh:/docker-entrypoint-initdb.d/init-config.sh
+#      - ./init.sql/init-config.sh:/docker-entrypoint-initdb.d/init-config.sh
     ports:
       - "5432:5432"
     networks:
       - backend
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rinha -d rinha" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
     deploy:
       resources:
         limits:
