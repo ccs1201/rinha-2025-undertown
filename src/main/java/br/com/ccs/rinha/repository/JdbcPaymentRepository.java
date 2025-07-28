@@ -65,7 +65,7 @@ public class JdbcPaymentRepository {
     }
 
     private void startWorker(int workerIndex, ArrayBlockingQueue<PaymentRequest> queue) {
-        log.info(String.format("Starting repository-worker-%s", workerIndex));
+
         Thread.ofVirtual().name("repository-worker-" + workerIndex).start(() -> {
             try (Connection conn = dataSource.getConnection();
                  PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
@@ -113,7 +113,6 @@ public class JdbcPaymentRepository {
                 log.log(Level.SEVERE, "Worker failure", e);
             }
         });
-        log.info(String.format("repository-worker-%s started", workerIndex));
     }
 
 
@@ -168,6 +167,7 @@ public class JdbcPaymentRepository {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.executeUpdate();
+            conn.commit();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

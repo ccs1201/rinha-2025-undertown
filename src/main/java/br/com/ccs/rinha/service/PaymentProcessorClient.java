@@ -2,12 +2,8 @@ package br.com.ccs.rinha.service;
 
 import br.com.ccs.rinha.api.model.input.PaymentRequest;
 import br.com.ccs.rinha.config.ExecutorConfig;
-import br.com.ccs.rinha.exception.HttpClientException;
 import br.com.ccs.rinha.repository.JdbcPaymentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -15,10 +11,12 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PaymentProcessorClient {
 
-    private static final Logger log = LoggerFactory.getLogger(PaymentProcessorClient.class);
+    private static final Logger log = java.util.logging.Logger.getLogger(PaymentProcessorClient.class.getSimpleName());
 
     private static final String contentType = "Content-Type";
     private static final String contentTypeValue = "application/json";
@@ -64,20 +62,20 @@ public class PaymentProcessorClient {
 
         for (int i = 0; i < workers; i++) {
             var queue = queues[i] = new ArrayBlockingQueue<>(1_000);
-            startProcessQueue(i, queue);
+            startWorkers(i, queue);
         }
 
-        log.info("Default service URL: {}", defaultUrl);
-        log.info("Fallback fallback URL: {}", fallbackUrl);
+        log.info("Default service URL: " + defaultUrl);
+        log.info("Fallback fallback URL: " + fallbackUrl);
     }
 
-    private void startProcessQueue(int wokerIndex, ArrayBlockingQueue<PaymentRequest> queue) {
-        Thread.ofVirtual().name("payment-processor" + wokerIndex).start(() -> {
+    private void startWorkers(int wokerIndex, ArrayBlockingQueue<PaymentRequest> queue) {
+        Thread.ofVirtual().name("payment-processor-" + wokerIndex).start(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    processPaymentWithRetry(queue.take(), 0);
+                    processPaymentWithRetry(queue.take());
                 } catch (InterruptedException e) {
-                    log.error("worker: {} has error: {}", Thread.currentThread().getName(), e.getMessage(), e);
+                    log.log(Level.SEVERE, String.format("worker: %s has error: %s", Thread.currentThread().getName(), e.getMessage()), e);
                     Thread.currentThread().interrupt();
                 }
             }
@@ -89,62 +87,55 @@ public class PaymentProcessorClient {
         boolean accepted = queues[index].offer(paymentRequest);
 
         if (!accepted) {
-            log.error("Payment rejected by queue {}", index);
+            log.log(Level.SEVERE, String.format("Payment rejected by queue %s", index));
         }
     }
 
-    private void processPaymentWithRetry(PaymentRequest paymentRequest, int retryCount) {
-        if (retryCount >= 3) {
-//            log.error("Max retries reached for payment {}", paymentRequest.correlationId);
-            return;
-        }
-
-        if (postToDefault(paymentRequest)) {
-            repository.save(paymentRequest);
-            return;
-        }
-//        log.error("Error processing payment default {} - retrying...", paymentRequest.correlationId);
-
-        if (postToFallback(paymentRequest)) {
-            repository.save(paymentRequest);
-            return;
-        }
-//        log.error("Error processing payment fallback {} - retrying...", paymentRequest.correlationId);
-
-        executorService.submit(() -> processPaymentWithRetry(paymentRequest, retryCount + 1));
+    private void processPaymentWithRetry(PaymentRequest paymentRequest) {
+        postToDefault(paymentRequest);
     }
 
 
-    private boolean postToDefault(PaymentRequest paymentRequest) {
+    private void postToDefault(PaymentRequest paymentRequest) {
         paymentRequest.setDefaultTrue();
-        return doRequest(defaultUri, paymentRequest);
+
+        var request = HttpRequest.newBuilder()
+                .uri(defaultUri)
+                .header(contentType, contentTypeValue)
+                .version(HttpClient.Version.HTTP_2)
+                .timeout(java.time.Duration.ofMillis(3000))
+                .POST(HttpRequest.BodyPublishers.ofString(paymentRequest.getJson()))
+                .build();
+
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .whenCompleteAsync((response, throwable) -> {
+                    if (response.statusCode() != 200) {
+                        postToFallback(paymentRequest);
+//                        log.info(">>>>>>>>>>>>>>>> Falhou no default não deveria salvar!");
+                        return;
+                    }
+//                    log.info("Default Salvando");
+                    repository.save(paymentRequest);
+                });
     }
 
-    private boolean postToFallback(PaymentRequest paymentRequest) {
+    private void postToFallback(PaymentRequest paymentRequest) {
         paymentRequest.setDefaultFalse();
-        return doRequest(fallbackUri, paymentRequest);
-    }
+        var request = HttpRequest.newBuilder()
+                .uri(fallbackUri)
+                .header(contentType, contentTypeValue)
+                .version(HttpClient.Version.HTTP_2)
+                .timeout(java.time.Duration.ofMillis(1000))
+                .POST(HttpRequest.BodyPublishers.ofString(paymentRequest.getJson()))
+                .build();
 
-    private Boolean doRequest(URI uri, PaymentRequest paymentRequest) throws HttpClientException {
-        try {
-            var request = HttpRequest.newBuilder()
-                    .uri(uri)
-                    .header(contentType, contentTypeValue)
-                    .version(HttpClient.Version.HTTP_2)
-                    .timeout(java.time.Duration.ofMillis(5000))
-                    .POST(HttpRequest.BodyPublishers.ofString(paymentRequest.getJson()))
-                    .build();
-
-            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200 && response.statusCode() != 201) {
-                log.info("Error processing payment status code: {}", response.statusCode());
-                return Boolean.FALSE;
-            }
-            return Boolean.TRUE;
-        } catch (IOException | InterruptedException e) {
-            log.error(e.getMessage(), e);
-            return Boolean.FALSE;
-        }
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .whenCompleteAsync((response, throwable) -> {
+                    if (response.statusCode() != 200) {
+                        processPayment(paymentRequest);
+                        return;
+                    }
+                    repository.save(paymentRequest);
+                });
     }
 }
