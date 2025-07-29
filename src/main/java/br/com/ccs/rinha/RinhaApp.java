@@ -36,12 +36,11 @@ public class RinhaApp {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) {
-                            // Adiciona os codecs HTTP do Netty no pipeline
                             ch.pipeline()
                                     .addLast(new HttpRequestDecoder()) // Decodifica requisições HTTP (cabeçalhos, corpo)
                                     .addLast(new HttpObjectAggregator(1024)) // Agrega partes HTTP em uma FullHttpRequest
                                     .addLast(new HttpResponseEncoder()) // Codifica respostas HTTP
-                                    .addLast(new HttpServerHandler()); // Seu handler customizado para a lógica de negócio
+                                    .addLast(HttpServerHandler.getInstance());
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128) // Número máximo de conexões pendentes no backlog

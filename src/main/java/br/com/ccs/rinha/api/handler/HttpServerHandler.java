@@ -37,6 +37,18 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
     private final JdbcPaymentRepository paymentRepository = JdbcPaymentRepository.getInstance();
     private final ThreadPoolExecutor executor = ExecutorConfig.getExecutor();
 
+    private static HttpServerHandler instance;
+
+    private HttpServerHandler() {
+    }
+
+    public static HttpServerHandler getInstance() {
+        if (instance == null) {
+            HttpServerHandler.instance = new HttpServerHandler();
+        }
+        return instance;
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
 
@@ -63,13 +75,13 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
     }
 
     private void doPayment(ChannelHandlerContext ctx, FullHttpRequest request) {
-//        executor.submit(() -> {
+        executor.submit(() -> {
             try {
                 paymentProcessorClient.processPayment(PaymentRequest.parse(request.content().toString(CharsetUtil.UTF_8)));
             } catch (Exception e) {
                 e.printStackTrace();
             }
-//        }, executor);
+        }, executor);
         sendResponse(ctx);
     }
 

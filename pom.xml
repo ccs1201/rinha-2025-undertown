@@ -90,7 +90,7 @@
                                 <buildArg>--no-fallback</buildArg>
                                 <buildArg>-H:EnableURLProtocols=http,https</buildArg>
                                 <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
-                                <buildArg>--diagnostics-mode</buildArg>
+<!--                                <buildArg>&#45;&#45;diagnostics-mode</buildArg>-->
                                 <buildArg>-O2</buildArg>
 <!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.NativeLibraryLoader</buildArg>-->
 <!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.HttpObjectEncoder-->
