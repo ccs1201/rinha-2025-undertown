@@ -8,28 +8,42 @@
     <name>rinha-backend-2025</name>
     <description>rinha-backend-2025</description>
     <url>https://www.linkedin.com/in/ccs1201/</url>
+
     <properties>
-        <java.version>24</java.version>
+        <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <ccs-boot.version>0.0.7-SNAPSHOT</ccs-boot.version>
+        <postgresql.version>42.7.7</postgresql.version>
+        <hikariCP.version>5.1.0</hikariCP.version>
+
+        <main.class>br.com.ccs.rinha.RinhaApp</main.class>
+        <native.image.name>rinha-netty-native</native.image.name>
+        <netty.version>4.2.3.Final</netty.version>
     </properties>
+
     <dependencies>
         <dependency>
-            <groupId>io.undertow</groupId>
-            <artifactId>undertow-core</artifactId>
-            <version>2.3.18.Final</version>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+            <version>${netty.version}</version>
+            <classifier>linux-x86_64</classifier>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.7</version>
+            <version>${postgresql.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>5.1.0</version>
+            <version>${hikariCP.version}</version>
         </dependency>
     </dependencies>
 
@@ -40,46 +54,95 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
                     <release>${java.version}</release>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>br.com.ccs.rinha.RinhaApp</mainClass>
-                                </transformer>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
-                    </execution>
-                </executions>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>${main.class}</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.6</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <mainClass>${main.class}</mainClass>
+                            <imageName>${native.image.name}</imageName>
+                            <buildArgs>
+                                <buildArg>--no-fallback</buildArg>
+                                <buildArg>-H:EnableURLProtocols=http,https</buildArg>
+                                <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+                                <buildArg>--diagnostics-mode</buildArg>
+                                <buildArg>-O2</buildArg>
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.NativeLibraryLoader</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.HttpObjectEncoder-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.HttpObjectDecoder-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>-->
+<!--                                    &#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.websocketx.WebSocket00FrameEncoder-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>-->
+<!--                                    &#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.websocketx.WebSocket07FrameEncoder-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>-->
+<!--                                    &#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.websocketx.WebSocket08FrameEncoder-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>-->
+<!--                                    &#45;&#45;initialize-at-run-time=io.netty.handler.codec.http.websocketx.WebSocket13FrameEncoder-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.channel.epoll.Epoll</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.channel.kqueue.KQueue</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.channel.unix.Errors</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.channel.unix.Limits</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.NetUtil</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.CleanerJava9</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.PlatformDependent</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.logging.InternalLoggerFactory-->
+<!--                                </buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.buffer.ByteBufUtil</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.buffer.ByteBufAllocator</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.buffer.UnpooledByteBufAllocator</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.PlatformDependent0</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.util.internal.CleanerJava7</buildArg>-->
+<!--                                <buildArg>&#45;&#45;initialize-at-run-time=io.netty.channel</buildArg>-->
+<!--                                <buildArg>-Dio.netty.noUnsafe=true</buildArg>-->
+                            </buildArgs>
+                            <debug>false</debug>
+                            <verbose>false</verbose>
+                            <fallback>false</fallback>
+                            <skip>false</skip>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>build-native</id>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

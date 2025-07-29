@@ -38,9 +38,9 @@ public class DataSourceFactory {
         String timeoutEnv = System.getenv("DATASOURCE_TIMEOUT").trim();
 
 
-        int minIdle = minIdleEnv.isBlank() ? 10 : Integer.parseInt(minIdleEnv);
-        int maxPoolSize = maxPoolEnv.isBlank() ? 10 : Integer.parseInt(maxPoolEnv);
-        int dataSourceTimeout = timeoutEnv.isBlank() ? 5000 : Integer.parseInt(timeoutEnv);
+        int minIdle = Integer.parseInt(minIdleEnv);
+        int maxPoolSize = Integer.parseInt(maxPoolEnv);
+        int dataSourceTimeout = Integer.parseInt(timeoutEnv);
 
         poolSize = maxPoolSize;
 

@@ -1,13 +1,16 @@
-# Build
-FROM maven:3.9.10-eclipse-temurin-24-alpine AS build
-WORKDIR /app
-COPY ../pom.xml .
-COPY ../src ./src
-RUN mvn clean package
+FROM debian:bookworm-slim
 
-
-FROM container-registry.oracle.com/graalvm/jdk:24
 WORKDIR /app
-COPY --from=build /app/target/rinha-backend-2025-0.0.1-SNAPSHOT.jar app.jar
+
+COPY target/rinha-netty-native /app/rinha-app
+
+RUN chmod +x /app/rinha-app
+
 EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
+ENTRYPOINT ["/app/rinha-app"]
+
+# Opcional: Se você quiser um usuário não-root por segurança (recomendado para produção)
+# RUN useradd -ms /bin/bash appuser
+# USER appuser
+# ENTRYPOINT ["/app/rinha-app"]

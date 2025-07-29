@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 public class ExecutorConfig {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutorConfig.class);
-    private static ExecutorService instance;
+    private static ThreadPoolExecutor instance;
 
     static {
         configure();
@@ -20,7 +20,7 @@ public class ExecutorConfig {
     private ExecutorConfig() {
     }
 
-    public static ExecutorService getExecutor() {
+    public static ThreadPoolExecutor getExecutor() {
         return instance;
     }
 

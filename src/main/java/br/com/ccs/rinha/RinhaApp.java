@@ -1,50 +1,65 @@
 package br.com.ccs.rinha;
 
-import br.com.ccs.rinha.api.handler.Handler;
-import io.undertow.Undertow;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import br.com.ccs.rinha.api.handler.HttpServerHandler;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpRequestDecoder;
+import io.netty.handler.codec.http.HttpResponseEncoder;
 
-import java.util.Objects;
+import java.util.logging.Logger;
 
 public class RinhaApp {
 
-    private static final Logger log = LoggerFactory.getLogger(RinhaApp.class);
+    private static final Logger logger = Logger.getLogger(RinhaApp.class.getSimpleName());
 
-    public static void main(String[] args) {
-        var envPort = System.getenv("SERVER_PORT");
-        var serverIOThreads = Integer.parseInt(System.getenv("SERVER_IO_THREADS"));
-        var serverWorkerThreads = Integer.parseInt(System.getenv("SERVER_WORKER_THREADS"));
-        int serverPort = Objects.isNull(envPort) ? 8080 : Integer.parseInt(envPort);
+    private static final int PORT = Integer.parseInt(System.getenv("SERVER_PORT"));
 
-        log.info("Starting server on port {}", serverPort);
-        printPromo(1);
+    public static void main(String[] args) throws Exception {
 
-        Undertow server = Undertow.builder()
-                .addHttpListener(serverPort, "0.0.0.0")
-                .setHandler(Handler.getInstance())
-                .setIoThreads(serverIOThreads)
-                .setWorkerThreads(serverWorkerThreads)
-                .setDirectBuffers(true)
-                .setBufferSize(1024 * 16 - 20)
-                .build();
-        server.start();
-        printPromo(1);
-        log.info("Server started! Let's play @RinhaDeBackend");
-    }
 
-    private static void printPromo(int sleep) {
-        var msg = """
-                 ##########     (Si vis pacem, para bellum)     ##########
-                >>> ccs1201 follow on linkedysnei -> https://www.linkedin.com/in/ccs1201/
-                >>> follow on  github -> https://github.com/ccs1201
-                """;
-        System.out.println(msg);
+        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+
         try {
-            Thread.sleep(sleep * 1000L);
-        } catch (Exception e) {
-            log.error("Isto realmente não deveria acontece :(", e);
+            ServerBootstrap b = new ServerBootstrap();
+            b.group(bossGroup, workerGroup)
+                    .channel(NioServerSocketChannel.class) // Usar canal NIO para I/O não bloqueante
+                    // Se você estiver em Linux e quiser usar epoll para maior performance:
+                    // .channel(EpollServerSocketChannel.class) // Requer netty-transport-native-epoll
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        public void initChannel(SocketChannel ch) {
+                            // Adiciona os codecs HTTP do Netty no pipeline
+                            ch.pipeline()
+                                    .addLast(new HttpRequestDecoder()) // Decodifica requisições HTTP (cabeçalhos, corpo)
+                                    .addLast(new HttpObjectAggregator(1024)) // Agrega partes HTTP em uma FullHttpRequest
+                                    .addLast(new HttpResponseEncoder()) // Codifica respostas HTTP
+                                    .addLast(new HttpServerHandler()); // Seu handler customizado para a lógica de negócio
+                        }
+                    })
+                    .option(ChannelOption.SO_BACKLOG, 128) // Número máximo de conexões pendentes no backlog
+                    .childOption(ChannelOption.SO_KEEPALIVE, true); // Manter conexões ativas
+
+            logger.info("Iniciando servidor Netty na porta: " + PORT);
+
+            // Vincula a porta e inicia o servidor.
+            ChannelFuture f = b.bind(PORT).sync(); // Bloqueia até o servidor ser iniciado
+
+            // Espera até que o socket do servidor seja fechado.
+            f.channel().closeFuture().sync(); // Bloqueia até o servidor ser desligado
+
+        } finally {
+            // Desliga todos os event loops para terminar todas as threads.
+            logger.info("Desligando servidor Netty.");
+            bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
         }
     }
-
 }
