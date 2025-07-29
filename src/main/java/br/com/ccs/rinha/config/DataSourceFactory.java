@@ -33,9 +33,9 @@ public class DataSourceFactory {
     }
 
     private static DataSource initDataSource() {
-        String minIdleEnv = System.getenv("datasource-minimum-idle").trim();
-        String maxPoolEnv = System.getenv("datasource-maximum-pool-size").trim();
-        String timeoutEnv = System.getenv("datasource-timeout").trim();
+        String minIdleEnv = System.getenv("DATASOURCE_MINIMUM_IDLE").trim();
+        String maxPoolEnv = System.getenv("DATASOURCE_MAXIMUM_POOL_SIZE").trim();
+        String timeoutEnv = System.getenv("DATASOURCE_TIMEOUT").trim();
 
 
         int minIdle = minIdleEnv.isBlank() ? 10 : Integer.parseInt(minIdleEnv);
@@ -44,9 +44,9 @@ public class DataSourceFactory {
 
         poolSize = maxPoolSize;
 
-        String dataSourceUrl = System.getenv("datasource-url").trim();
-        String datasourceUsername = System.getenv("datasource-username").trim();
-        String dataSourcePassword = System.getenv("datasource-password").trim();
+        String dataSourceUrl = System.getenv("DATASOURCE_URL").trim();
+        String datasourceUsername = System.getenv("DATASOURCE_USERNAME").trim();
+        String dataSourcePassword = System.getenv("DATASOURCE_PASSWORD").trim();
 
         log.info("Data Source URL: {}", dataSourceUrl);
         log.info("Data Source Username: {}", datasourceUsername);

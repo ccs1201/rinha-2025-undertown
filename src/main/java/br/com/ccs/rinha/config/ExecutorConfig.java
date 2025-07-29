@@ -26,8 +26,8 @@ public class ExecutorConfig {
 
     private static void configure() {
 
-        String threadPoolSizeStr = System.getenv("thread-pool-size").trim();
-        String queueSizeStr = System.getenv("thread-queue-size").trim();
+        String threadPoolSizeStr = System.getenv("THREAD_POOL_SIZE").trim();
+        String queueSizeStr = System.getenv("THREAD_QUEUE_SIZE").trim();
 
         int threadPoolSize = threadPoolSizeStr.isBlank() ? 10 : Integer.parseInt(threadPoolSizeStr);
         int queueSize = queueSizeStr.isBlank() ? 1000 : Integer.parseInt(queueSizeStr);
