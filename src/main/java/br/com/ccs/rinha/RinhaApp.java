@@ -12,9 +12,9 @@ public class RinhaApp {
     private static final Logger log = LoggerFactory.getLogger(RinhaApp.class);
 
     public static void main(String[] args) {
-        var envPort = System.getenv("server-port");
-        var serverIOThreads = System.getenv("server-io-threads") == null ? 2 : Integer.parseInt(System.getenv("server-io-threads"));
-        var serverWorkerThreads = System.getenv("server-worker-threads") == null ? 10 : Integer.parseInt(System.getenv("server-worker-threads"));
+        var envPort = System.getenv("SERVER_PORT");
+        var serverIOThreads = Integer.parseInt(System.getenv("SERVER_IO_THREADS"));
+        var serverWorkerThreads = Integer.parseInt(System.getenv("SERVER_WORKER_THREADS"));
         int serverPort = Objects.isNull(envPort) ? 8080 : Integer.parseInt(envPort);
 
         log.info("Starting server on port {}", serverPort);

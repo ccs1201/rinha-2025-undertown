@@ -3,7 +3,7 @@ FROM maven:3.9.10-eclipse-temurin-24-alpine AS build
 WORKDIR /app
 COPY ../pom.xml .
 COPY ../src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package
 
 
 FROM container-registry.oracle.com/graalvm/jdk:24

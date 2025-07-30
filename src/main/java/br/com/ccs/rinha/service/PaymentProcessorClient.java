@@ -39,10 +39,10 @@ public class PaymentProcessorClient {
 
 
     private PaymentProcessorClient() {
-        var defaultUrl = System.getenv("payment-processor-default-url").trim();
+        var defaultUrl = System.getenv("PAYMENT_PROCESSOR_DEFAULT_URL").trim();
         defaultUrl = defaultUrl.concat("/payments");
 
-        var fallbackUrl = System.getenv("payment-processor-fallback-url").trim();
+        var fallbackUrl = System.getenv("PAYMENT_PROCESSOR_FALLBACK_URL").trim();
         fallbackUrl = fallbackUrl.concat("/payments");
 
         var workers = Integer.parseInt(System.getenv("PAYMENT_PROCESSOR_WORKERS"));
